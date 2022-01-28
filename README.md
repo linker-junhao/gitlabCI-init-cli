@@ -20,7 +20,7 @@ git submodule add https://your-snapshot-git-repo-url
 ```
 
 ### 2.3 安装storybook
-> storybook的安装可以在其官网文档找到详细的说明：https://storybook.js.org/docs/react/get-started/install
+> storybook的安装可以在其官网文档找到详细的说明：https://storybook.js.org/docs/vue/get-started/install
 
 ### 2.4 jest配置文件
 #### 2.4.1 testMatch配置
