@@ -1,4 +1,4 @@
-# GitLabCi init cli
+# GitLab CI init cli
 
 ## 1 作用
 用于生成gitlab ci的相关配置文件，在对应的git工作流程中触发相关的pipeline（pipeline即流水线，一系列的自动任务的执行）。
@@ -75,6 +75,7 @@ module.exports = {
 ```
 
 ## 3 使用
+### 3.1 运行程序
 首先通过npm安装
 ```bash
 npm install gitlabci-init-cli
@@ -85,6 +86,23 @@ gitlabci-init
 ```
 最后输入对应的参数即可。
 
+### 3.2 运行后的产物
+会在你的项目根目录下添加以下文件
+```
+├── .gitlab-ci.yml
+└── ci_cd
+    ├── copySnapshots.js
+    ├── dingdingMsgAlert.js
+    └── useConfigFileHelper.js
+```
+* .gitlab-ci.yml
+知道gitlab执行流水线的文件。
+* copySnapshots.js
+用于从快照项目目录拷贝基准快照到需要做测试的项目目录，或者将项目目录中更新后的快照拷贝到快照项目目录。
+* dingdingMsgAlert.js
+用于推送钉钉通知消息。
+* useConfigFileHelper.js
+用于获取到测试配置文件（默认```xt-testing.config.js```）中的配置，其它程序需要使用配置时，会调用此模块的```useConfigFile```函数。
 ## 4 触发的gitlab pipeline：
 ### 4.1 执行单元测试/快照测试
 * 作用：为合并一个merge request的review提供参考。我们假设单元测试/快照测试都是有效的，如果通过了这些测试，那很大程度上，我们可以信任这是一个靠谱的提交。
