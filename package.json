@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "files": [
+    "template",
+    "bin",
+    "lib"
+  ],
+  "bin": "./bin/gitlab-ci-init.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
