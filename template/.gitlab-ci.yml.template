@@ -28,7 +28,6 @@ before_script:
     then
       cd $SNAPSHOTS_REPO_DIR
       branchExist=$(git branch -la | egrep -e "^[\s]{0,}(\*?) (.+)$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME( ){0,}$" | wc -l | xargs) || true
-      echo $branchExist
       targetBranch="${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
       targetBranchExist=$(git branch -la | egrep -e "^[\s]{0,}(\*?) (.+)$targetBranch( ){0,}$" | wc -l | xargs) || true
       if test $targetBranchExist = 0;then targetBranch="master";fi
@@ -139,7 +138,6 @@ dev-save_snapshoot_diff:
     # checkout a new branch from master for this merge
     # the branch name of snapshot repo determined by this merge action's target branch name
     - cd $SNAPSHOTS_REPO_DIR
-    - echo $branchExist
     # - if test $branchExist -gt 0;then git branch -D $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME;fi
     - git branch $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME $targetBranch
     - git checkout $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
@@ -149,7 +147,6 @@ dev-save_snapshoot_diff:
     - cd $SNAPSHOTS_REPO_DIR
     - toCommit=$(git diff --name-only | wc -l | xargs) || true
     - git status
-    - echo $toCommit
     - if test $toCommit -gt 0;then git add -A && git commit -a -m "快照测试完成" && git push --set-upstream origin $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME --force;fi
     - cd $CI_PROJECT_DIR
     - > 
