@@ -1,0 +1,189 @@
+image: "registry.cn-chengdu.aliyuncs.com/linker-public/nodejs-for-testing:v1.2"
+
+stages:
+  - prepare
+  - test
+  - deploy
+
+variables:
+  SNAPSHOTS_REPO_DIR: '$CI_PROJECT_DIR/{{_VAR_snapshotDirRelativePath}}'
+  GIT_SUBMODULE_STRATEGY: none
+  # MERGE_TRIGGER_AVAILABLE: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+
+cache: &global_cache
+  paths:
+    - {{_VAR_configFileName}}.js
+    - node_modules
+  policy: pull
+
+before_script:
+  - git --version
+  - echo "[submodule \"{{_VAR_snapshotDirRelativePath}}\"]" > .gitmodules
+  - echo "  path = {{_VAR_snapshotDirRelativePath}}" >> .gitmodules
+  - echo "  url = https://oauth2:$GIT_ACCESS_TOKEN@{{_VAR_gitRepoUrl}}" >> .gitmodules
+  - cat .gitmodules
+  - git submodule init && git submodule update
+  - |
+    if test $CI_PIPELINE_SOURCE = 'merge_request_event'
+    then
+      cd $SNAPSHOTS_REPO_DIR
+      branchExist=$(git branch -la | egrep -e "^[\s]{0,}(\*?) (.+)$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME( ){0,}$" | wc -l | xargs) || true
+      echo $branchExist
+      targetBranch="${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
+      targetBranchExist=$(git branch -la | egrep -e "^[\s]{0,}(\*?) (.+)$targetBranch( ){0,}$" | wc -l | xargs) || true
+      if test $targetBranchExist = 0;then targetBranch="master";fi
+      git checkout $targetBranch
+      cd $CI_PROJECT_DIR
+    fi
+
+config_prepare:
+  stage: prepare
+  rules:
+      - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+      - if: $CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_REF_NAME == 'master'
+      - if: $CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_REF_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+    policy: pull-push
+  script:
+    # construct testing.config
+    - echo "module.exports={SNAPSHOTS_DIR:'$SNAPSHOTS_REPO_DIR',APP_NAME:'$CI_PROJECT_NAME'}" > $CI_PROJECT_DIR/{{_VAR_configFileName}}.js
+    - npm install
+
+## dev -> stable
+dev-unit:
+  stage: test
+  allow_failure: true
+  rules:
+      - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+  artifacts:
+    expire_in: 3 days
+    paths:
+      - {{_VAR_testReportDirPath}}
+    when: always
+    reports:
+      junit:
+        - {{_VAR_testReportDirPath}}/junit.xml
+  script:
+    # run test
+    - npm run test:unit
+
+dev-snapshot_markup:
+  stage: test
+  allow_failure: true
+  rules:
+      - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+  artifacts:
+    expire_in: 3 days
+    paths:
+      - stories/
+      - {{_VAR_testReportDirPath}}
+    when: always
+    reports:
+      junit:
+        - {{_VAR_testReportDirPath}}/junit.xml
+  script:
+    - cd $SNAPSHOTS_REPO_DIR && git checkout $targetBranch && cd $CI_PROJECT_DIR
+    # copy snapshot to story, prepare for test
+    - npm run snapshot:prepare_test
+    # run markup snapshot test
+    - npm run test:snapshot_markup
+
+dev-snapshot_visual:
+  stage: test
+  allow_failure: true
+  rules:
+      - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+  artifacts:
+    expire_in: 3 days
+    paths:
+      - stories/
+      - {{_VAR_testReportDirPath}}
+      - storybook-static
+    when: always
+    reports:
+      junit:
+        - {{_VAR_testReportDirPath}}/junit.xml
+  script:
+    - cd $SNAPSHOTS_REPO_DIR && git checkout $targetBranch && cd $CI_PROJECT_DIR
+    # build storybook
+    - npm run build-storybook -- --quiet
+    # copy snapshot to story, prepare for test
+    - npm run snapshot:prepare_test
+    # run visual snapshot test
+    - npm run test:snapshot_visual
+
+dev-save_snapshoot_diff:
+  stage: deploy
+  rules:
+      - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME !~ /^.+-stable$/ && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != 'master' && $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+  script:
+    # checkout a new branch from master for this merge
+    # the branch name of snapshot repo determined by this merge action's target branch name
+    - cd $SNAPSHOTS_REPO_DIR
+    - echo $branchExist
+    # - if test $branchExist -gt 0;then git branch -D $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME;fi
+    - git branch $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME $targetBranch
+    - git checkout $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+    # update snapshot repo
+    - cd $CI_PROJECT_DIR
+    - npm run snapshot:prepare_test && npm run test:snapshot_markup -- -u && npm run test:snapshot_visual -- -u && npm run snapshot:update_repo
+    - cd $SNAPSHOTS_REPO_DIR
+    - toCommit=$(git diff --name-only | wc -l | xargs) || true
+    - git status
+    - echo $toCommit
+    - if test $toCommit -gt 0;then git add -A && git commit -a -m "快照测试完成" && git push --set-upstream origin $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME --force;fi
+    - cd $CI_PROJECT_DIR
+    - > 
+        node ./ci_cd/dingdingMsgAlert.js
+        --CI_MERGE_REQUEST_TITLE="$CI_MERGE_REQUEST_TITLE"
+        --CI_MERGE_REQUEST_IID=$CI_MERGE_REQUEST_IID 
+        --CI_MERGE_REQUEST_SOURCE_BRANCH_NAME=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+        --CI_MERGE_REQUEST_TARGET_BRANCH_NAME=$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        --CI_MERGE_REQUEST_ASSIGNEES=$CI_MERGE_REQUEST_ASSIGNEES
+        --GIT_USERNAME_DING_MOBILE=$GIT_USERNAME_DING_MOBILE
+        --DD_ROBOT_TOKEN=$DD_ROBOT_TOKEN
+        --messageType=mergeRequestPipelineFinished
+        --CI_MERGE_REQUEST_PROJECT_URL=$CI_MERGE_REQUEST_PROJECT_URL
+        --CI_PROJECT_NAME="$CI_PROJECT_NAME"
+
+stable-update_snapshot:
+  stage: deploy
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_REF_NAME == 'master'
+    - if: $CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_REF_NAME =~ /^.+-stable$/
+  tags:
+    - {{_VAR_tag}}
+  cache:
+    <<: *global_cache
+  script:
+    - UPDATE_TARGET_COMMIT_REF_NAME="${CI_COMMIT_REF_NAME}"
+    - cd $SNAPSHOTS_REPO_DIR
+    - branchExist=$(git branch -la | egrep -e "^[\s]{0,}(\*?) (.+)$UPDATE_TARGET_COMMIT_REF_NAME( ){0,}$" | wc -l | xargs) || true
+    - if test $branchExist = 0;then git branch $UPDATE_TARGET_COMMIT_REF_NAME master;fi
+    - git checkout $UPDATE_TARGET_COMMIT_REF_NAME
+    - cd $CI_PROJECT_DIR
+    # build storybook
+    - npm run build-storybook -- --quiet
+    - npm run test:snapshot_visual -- -u && npm run test:snapshot_markup -- -u && npm run snapshot:update_repo
+    - cd $SNAPSHOTS_REPO_DIR
+    - toCommit=$(git diff --name-only | wc -l | xargs) || true
+    - if test $toCommit -gt 0;then git add -A && git commit -a -m "更新快照" && git push --set-upstream origin $UPDATE_TARGET_COMMIT_REF_NAME --force;fi

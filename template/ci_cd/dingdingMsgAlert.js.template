@@ -1,0 +1,78 @@
+const https = require('https')
+const configFileHelper = require('./useConfigFileHelper')
+const args = require('minimist')(process.argv.slice(2))
+
+const messageTypes = {
+  mergeRequestPipelineFinished: 'mergeRequestPipelineFinished',
+  snapshotUpdated: 'snapshotUpdated'
+}
+
+// valid args
+if (!messageTypes[args.messageType]) {
+  throw new Error('args: not a valid messageType')
+}
+if (args.messageType === messageTypes.mergeRequestPipelineFinished) {
+  const argNames = Reflect.ownKeys(args) || []
+  const requiredKeys = [
+    'CI_MERGE_REQUEST_IID',
+    'CI_MERGE_REQUEST_SOURCE_BRANCH_NAME',
+    'CI_MERGE_REQUEST_TARGET_BRANCH_NAME',
+    'CI_MERGE_REQUEST_ASSIGNEES',
+    'CI_MERGE_REQUEST_PROJECT_URL',
+    'GIT_USERNAME_DING_MOBILE',
+    'DD_ROBOT_TOKEN',
+    'CI_MERGE_REQUEST_TITLE'
+  ]
+  requiredKeys.forEach(k => {
+    if (!argNames.includes(k)) {
+      throw new Error(`args: arg ${k} required`)
+    }
+  })
+}
+
+const gitUserNameMapDingMobile = JSON.parse(args.GIT_USERNAME_DING_MOBILE)
+const atMobiles = args.CI_MERGE_REQUEST_ASSIGNEES.split(',').map(username => {
+  return gitUserNameMapDingMobile[username]
+})
+
+const markdownMsg = {
+  mergeRequestPipelineFinished: {
+    title: '[通知]新的merge request需要处理',
+    text: `#### MERGE REQUEST [${args.CI_MERGE_REQUEST_IID}](${args.CI_MERGE_REQUEST_PROJECT_URL}/merge_requests/${args.CI_MERGE_REQUEST_IID}) \n` +
+      '> 测试任务已执行完成，请及时review进行处理。  \n' +
+      `> project: ${args.CI_PROJECT_NAME}  \n` +
+      `> MR: [${args.CI_MERGE_REQUEST_TITLE}，${args.CI_MERGE_REQUEST_IID}](${args.CI_MERGE_REQUEST_PROJECT_URL}/merge_requests/${args.CI_MERGE_REQUEST_IID})  \n` +
+      `> source:${args.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} --> target:${args.CI_MERGE_REQUEST_TARGET_BRANCH_NAME}  \n` +
+      `##### ${atMobiles.map(mobile => `@${mobile}`)}`
+  },
+  snapshotUpdated: {
+    title: '快照已更新',
+    text: `
+      快照已更新
+    `
+  }
+}
+
+configFileHelper.useConfigFile(config => {
+  if (!args.DD_ROBOT_TOKEN) {
+    return
+  }
+  const msgReq = https.request(
+    `https://oapi.dingtalk.com/robot/send?access_token=${args.DD_ROBOT_TOKEN}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  )
+  msgReq.write(JSON.stringify({
+    msgtype: 'markdown',
+    markdown: markdownMsg[args.messageType],
+    at: {
+      atMobiles,
+      isAtAll: false
+    }
+  }))
+  msgReq.end()
+})
