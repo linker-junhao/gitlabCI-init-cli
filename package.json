@@ -8,7 +8,7 @@
     "bin",
     "lib"
   ],
-  "bin": "./bin/gitlab-ci-init.js",
+  "bin": "./bin/gitlabci-init.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

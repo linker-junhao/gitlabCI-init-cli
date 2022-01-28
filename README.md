@@ -6,7 +6,7 @@
 ## 2 前提配置
 ### 2.1 快照git submodule
 将快照git repo以submodule的形式增加到项目中。
-```shell
+```bash
 git submodule add https://your-snapshot-git-repo-url
 ```
 ### 2.2 Gitlab环境变量
@@ -18,8 +18,12 @@ git submodule add https://your-snapshot-git-repo-url
 // 例如
 {"san.zhang":"159xxxxxxxx"}
 ```
-### 2.3 jest配置文件
-#### 2.3.1 testMatch配置
+
+### 2.3 安装storybook
+> storybook的安装可以在其官网文档找到详细的说明：https://storybook.js.org/docs/react/get-started/install
+
+### 2.4 jest配置文件
+#### 2.4.1 testMatch配置
 >testMatch配置项的详细文档说明可以在jest文档中查阅：https://jestjs.io/zh-Hans/docs/27.2/configuration#testmatch-arraystring
 
 我们在这个预设的gitlab ci中，区分了四种jest测试任务，它们分别对应四个```process.env.TEST_TYPE```变量值，分别是：单元测试```unit```、标签快照测试```snapshot_markup```、视觉快照测试```snapshot_visual```、所有测试```all```，
@@ -43,13 +47,13 @@ module.exports = {
 }
 ```
 
-#### 2.3.2 reporters配置
+#### 2.4.2 reporters配置
 >reporters配置项的详细文档说明可以在jest文档中查阅：https://jestjs.io/zh-Hans/docs/27.2/configuration#reporters-arraymodulename--modulename-options
 
 配置reporters的目的是为了将测试的结果送到gitlab中，使gitlab可以直接展示我们的测试结果，目前我们的gitlab版本（12.5.4）只接受```junit xml```格式的测试结果。
 
 首先通过npm安装```jest-junit```。
-```shell
+```bash
 npm i jest-junit
 ```
 然后在jest配置文件中的reporters配置项中加入junit。
@@ -71,8 +75,15 @@ module.exports = {
 ```
 
 ## 3 使用
-
-
+首先通过npm安装
+```bash
+npm install gitlabci-init-cli
+```
+执行
+```bash
+gitlabci-init
+```
+最后输入对应的参数即可。
 
 ## 4 触发的gitlab pipeline：
 ### 4.1 执行单元测试/快照测试
