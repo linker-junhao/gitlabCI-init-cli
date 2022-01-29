@@ -165,3 +165,14 @@ gitlabci-init
 * 作用：当merge request通过后，我们理解此次变动被review并且接受，所以基准快照将基于这次新的提交生成，并且成为新的基准，以备下一次快照测试。
 * 过程：执行快照更新，本质上执行的是```npm run test:snapshot_markup -- -u && npm run test:snapshot_visual -- -u```，并且将更新后的快照移动到快照的项目目录下，并且commit&push。
 * 触发条件：当分支名满足```/^.+-stable$/```的分支被push commit时将会触发。
+
+# 参考
+1. https://storybook.js.org/docs
+2. https://jestjs.io/zh-Hans/docs/snapshot-testing
+3. https://segmentfault.com/a/1190000014720175
+4. https://www.infoq.cn/article/visual-perception-test
+5. https://blog.axiu.me/jest-what-is-snapshot/
+6. https://lmiller1990.github.io/vue-testing-handbook/zh-CN/
+7. https://www.freecodecamp.org/news/the-front-end-test-pyramid-rethink-your-testing-3b343c2bca51/
+8. https://gist.github.com/shilman/8856ea1786dcd247139b47b270912324
+9. https://docs.gitlab.com/ee/ci/
