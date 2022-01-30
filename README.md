@@ -7,7 +7,7 @@
 ### 2.1 快照git submodule {#require-config-git-submodule}
 将快照git repo以submodule的形式增加到项目中。
 ```bash
-git submodule add https://your-snapshot-git-repo-url
+git submodule add https://YOUR-SNAPSHOT-GIT-REPO-URL
 ```
 ### 2.2 Gitlab环境变量 {#require-config-gitlab-env-var}
 在```对应项目 > setting > CI/CD > Variable```下添加三个变量。
@@ -25,7 +25,52 @@ git submodule add https://your-snapshot-git-repo-url
 
 > storybook快照测试插件的安装：https://storybook.js.org/docs/react/writing-tests/snapshot-testing
 
-#### 2.3.2 加入测试文件 {#require-config-storybook-test-file}
+#### 2.3.2 storybook配置 {#storybook-config}
+将```.storybook/main.js```配置文件修改。
+```javascript
+// .storybook/main.js，示例配置
+const path = require('path')
+const utils = require('../build/utils')
+
+function resolve (dir) {
+  return path.join(__dirname, '..', dir)
+}
+
+module.exports = {
+  "stories": [
+    "../stories/**/*.stories.mdx",
+    "../stories/**/*.stories.@(js|jsx|ts|tsx)"
+  ],
+  "addons": [
+    "@storybook/addon-links",
+    "@storybook/addon-essentials"
+  ],
+  "core": {
+    "builder": "webpack5"
+  },
+  webpackFinal: async (config, { configType }) => {
+    config.resolve.alias['@'] = resolve('client')
+    config.module.rules.push(
+      ...(utils.styleLoaders({
+        sourceMap: false,
+        usePostCSS: true 
+      }).filter(rule => {
+        return rule.test.toString() !== /\.css$/.toString()
+      }))
+    )
+    if (config.infrastructureLogging) {
+      config.infrastructureLogging.level = 'info'
+    } else {
+      config.infrastructureLogging = {
+        level: 'info'
+      }
+    }
+    return config
+  }
+}
+```
+
+#### 2.3.3 加入测试文件 {#require-config-storybook-test-file}
 需要添加两个测试文件，分别对应标记快照测试与视觉快照测试：```storybook.markupsnapshot.test.js```和```storybook.visualsnapshot.test.js```，这两个文件名与[2.4.1 testMatch配置](#require-config-jest-testMatch)中的```snapshot_markup```和```snapshot_visual```配置项应该保持一致。
 ```javascript
 // storybook.markupsnapshot.test.js
