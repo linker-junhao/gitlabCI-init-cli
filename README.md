@@ -206,7 +206,7 @@ gitlabci-init
     * 单元测试：执行单元测试本质上是执行了```npm run test:unit```
     * 快照测试：快照测试使用已有的stable快照作为基准，在此基准上执行快照测试。在过程上，stable快照存储在一个单独的git repo中（这是因为快照以图片的形式存在，存储在当前的项目git repo中会使项目变得臃肿），以git submodule的形式存在于主项目中且分支名与项目的分支名一致，当merge request创建后执行快照测试时，会到快照项目目录下切换分支到merge request的目标分支名（target branch name），然后将基准快照同步到开发的项目中，再执行快照测试以找到此次merge request与基准有所差异的地方。
 * 触发条件：当一个源分支名（source branch name）不满足```/^.+-stable$/```，目标分支名（target branch name）满足```/^.+-stable$/```的merge request被创建时，该pipeline将会被触发。
-### 4.2 保存基准快照（stable快照）{#pipeline-save-baseline-snapshot}
+### 4.2 保存基准快照（stable快照） {#pipeline-save-baseline-snapshot}
 * 作用：当merge request通过后，我们理解此次变动被review并且接受，所以基准快照将基于这次新的提交生成，并且成为新的基准，以备下一次快照测试。
 * 过程：执行快照更新，本质上执行的是```npm run test:snapshot_markup -- -u && npm run test:snapshot_visual -- -u```，并且将更新后的快照移动到快照的项目目录下，并且commit&push。
 * 触发条件：当分支名满足```/^.+-stable$/```的分支被push commit时将会触发。
