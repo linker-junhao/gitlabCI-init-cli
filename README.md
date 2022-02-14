@@ -23,7 +23,7 @@ git submodule add https://YOUR-SNAPSHOT-GIT-REPO-URL
 #### 2.3.1 安装 {#require-config-storybook-install}
 > storybook的基本安装可以在其官网文档找到详细的说明：https://storybook.js.org/docs/vue/get-started/install
 
-> storybook快照测试插件的安装：https://storybook.js.org/docs/react/writing-tests/snapshot-testing
+> storybook快照测试插件的安装：https://storybook.js.org/docs/vue/writing-tests/snapshot-testing
 
 #### 2.3.2 storybook配置 {#storybook-config}
 将```.storybook/main.js```配置文件修改。
@@ -190,6 +190,16 @@ gitlabci-init
     ├── copySnapshots.js
     ├── dingdingMsgAlert.js
     └── useConfigFileHelper.js
+```
+会在package.json中添加以下脚本
+```json
+{
+    "snapshot:prepare_test": "node ./ci_cd/copySnapshots.js --SNAPSHOT_OP=prepare_test",
+    "snapshot:update_repo": "node ./ci_cd/copySnapshots.js --SNAPSHOT_OP=update_repo",
+    "test:unit": "cross-env TEST_TYPE=unit jest --config ${templateParams._VAR_jestConfigPath} --coverage",
+    "test:snapshot_markup": "cross-env TEST_TYPE=snapshot_markup jest --config ${templateParams._VAR_jestConfigPath}",
+    "test:snapshot_visual": "cross-env TEST_TYPE=snapshot_visual jest --config ${templateParams._VAR_jestConfigPath}"
+}
 ```
 * .gitlab-ci.yml
 知道gitlab执行流水线的文件。
